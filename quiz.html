@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Какой ты комьюнити-менеджер?</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:#04040c;font-family:'Space Grotesk',sans-serif;color:#fff;}
+#root{width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+.phone{width:390px;height:844px;max-width:100vw;max-height:100dvh;max-height:100vh;position:relative;overflow:hidden;background:#07070f;}
+@media(max-width:430px){.phone{width:100vw;height:100dvh;height:100vh;}}
+button{-webkit-appearance:none;appearance:none;font-family:'Space Grotesk',sans-serif;}
+::-webkit-scrollbar{display:none;}
+
+.isc{width:100%;height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;}
+.isc::-webkit-scrollbar{display:none;}
+.ipanel{width:100%;height:100%;scroll-snap-align:start;position:relative;flex-shrink:0;}
+
+@keyframes pulseUp{
+  0%{transform:translateY(0) scale(1);opacity:1;}
+  100%{transform:translateY(-180px) scale(0.1);opacity:0;}
+}
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(16px);}
+  to{opacity:1;transform:translateY(0);}
+}
+@keyframes scaleIn{
+  from{opacity:0;transform:scale(0.88);}
+  to{opacity:1;transform:scale(1);}
+}
+@keyframes shimmer{
+  0%,100%{opacity:0.4;}
+  50%{opacity:1;}
+}
+.fade-up{animation:fadeUp 0.5s ease both;}
+.scale-in{animation:scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ══════════════════════════════════════════════════════
+// SOUND ENGINE
+// ══════════════════════════════════════════════════════
+let _ac = null;
+const ac = () => {if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();return _ac;};
+const tone = (f, dur = 0.12, vol = 0.07, type = 'sine', delay = 0) => {
+  try {
+    const c = ac(),o = c.createOscillator(),g = c.createGain();
+    o.connect(g);g.connect(c.destination);
+    o.type = type;o.frequency.value = f;
+    const t = c.currentTime + delay;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.start(t);o.stop(t + dur);
+  } catch (e) {}
+};
+const SFX = {
+  pick: (m) => {if (m) return;tone(523, .09);tone(659, .12, .05, 'sine', .08);},
+  block: (m) => {if (m) return;[523, 659, 784, 1047].forEach((f, i) => tone(f, .2, .05, 'sine', i * .075));},
+  trans: (m) => {if (m) return;tone(200, .22, .04, 'sawtooth');},
+  reveal: (m) => {if (m) return;[392, 523, 659].forEach((f, i) => tone(f, .38, .05, 'sine', i * .13));}
+};
+
+// ══════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════
+const hexRgb = (h) => ({ r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16) });
+const PALETTES = {
+  E: ['#FF6B9A', '#FF4488', '#FF92BB'],
+  A: ['#FF8A3D', '#FF6B1A', '#FFB055'],
+  C: ['#3BE8C5', '#00D4AA', '#5BFFD5'],
+  V: ['#A855F7', '#7C3AED', '#C084FC'],
+  neutral: ['#FF6B9A', '#FF8A3D', '#3BE8C5']
+};
+
+// ══════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════
+const INTRO = [
+{ id: 'concept',
+  tag: 'Твой цифровой слепок',
+  head: 'Это твоя частица',
+  body: 'Как художник использует кисти и краски, чтобы выразить мир — ты используешь сообщество, чтобы выразить себя. Впереди 9 вопросов, которые покажут твой профессиональный портрет как луч света.',
+  pal: 'neutral', sz: 196 },
+{ id: 'types',
+  tag: 'Четыре природы',
+  head: 'Кем ты\nможешь быть?',
+  types: [
+  { k: 'A', name: 'Архитектор роста', c: '#FF8A3D', line: 'Строит системы, которые живут без него' },
+  { k: 'E', name: 'Эмпатичный лидер', c: '#FF6B9A', line: 'Слышит то, что не сказано вслух' },
+  { k: 'C', name: 'Коннектор', c: '#3BE8C5', line: 'Создаёт химию там, где её не было' },
+  { k: 'V', name: 'Визионер', c: '#A855F7', line: 'Видит будущее раньше всех' }]
+},
+{ id: 'start',
+  tag: 'Готово к старту',
+  head: 'Твоя частица\nуже ждёт.',
+  body: '9 вопросов — 3 блока — профиль, который останется с тобой.',
+  pal: 'neutral', sz: 210, isCTA: true }];
+
+
+const QS = [
+{ id: 1, block: 1, bname: 'Коммуникационное ДНК', multi: false,
+  q: 'Новый участник появился в сообществе. Что ты делаешь первым?',
+  a: [{ t: 'Пишу тёплое персональное приветствие и узнаю о его целях', k: 'E' },
+  { t: 'Отправляю структурированный онбординг-гайд', k: 'A' },
+  { t: 'Зову в самое живое обсуждение прямо сейчас', k: 'C' },
+  { t: 'Изучаю профиль и думаю, как он впишется в экосистему', k: 'V' }] },
+{ id: 2, block: 1, bname: 'Коммуникационное ДНК', multi: false,
+  q: 'Конфликт разгорается прямо сейчас. Твои первые действия?',
+  a: [{ t: 'Выслушиваю каждую сторону — ищу то, что объединяет', k: 'E' },
+  { t: 'Применяю правила, документирую, завожу задачу', k: 'A' },
+  { t: 'Переключаю энергию — запускаю новую активность', k: 'C' },
+  { t: 'Ищу первопричину: почему это вообще произошло?', k: 'V' }] },
+{ id: 3, block: 1, bname: 'Коммуникационное ДНК', multi: false,
+  q: 'Какой формат контента резонирует с тобой больше всего?',
+  a: [{ t: 'Живые истории и кейсы участников', k: 'E' },
+  { t: 'Аналитика, дайджесты, структурированные обзоры', k: 'A' },
+  { t: 'Движуха: опросы, ивенты, коллаборации', k: 'C' },
+  { t: 'Провокационные идеи, меняющие мышление', k: 'V' }] },
+{ id: 4, block: 2, bname: 'Рабочий стиль', multi: true, max: 2,
+  q: 'Как ты планируешь активности? Выбери до двух вариантов.',
+  a: [{ t: 'Спрашиваю участников, что им нужно сейчас', k: 'E' },
+  { t: 'Строю контент-план на месяц вперёд с KPI', k: 'A' },
+  { t: 'Ловлю момент и настроение, импровизирую', k: 'C' },
+  { t: 'Ищу тренды и строю гипотезы о будущем', k: 'V' }] },
+{ id: 5, block: 2, bname: 'Рабочий стиль', multi: false,
+  q: 'Что важнее всего отслеживать в метриках?',
+  a: [{ t: 'Настроение и эмоциональная вовлечённость людей', k: 'E' },
+  { t: 'Retention, активность, рост — всё по цифрам', k: 'A' },
+  { t: 'Количество новых связей и коллабораций', k: 'C' },
+  { t: 'Качество идей и уровень мышления в сообществе', k: 'V' }] },
+{ id: 6, block: 2, bname: 'Рабочий стиль', multi: false,
+  q: 'Пришёл критический фидбек о сообществе. Как реагируешь?',
+  a: [{ t: 'Связываюсь лично — разбираю боль человека', k: 'E' },
+  { t: 'Завожу задачу, ищу системное решение', k: 'A' },
+  { t: 'Превращаю в открытое обсуждение с сообществом', k: 'C' },
+  { t: 'Использую как сигнал для переосмысления стратегии', k: 'V' }] },
+{ id: 7, block: 3, bname: 'Профессиональная идентичность', multi: true, max: 2,
+  q: 'Каким ты видишь идеальное сообщество? До двух ответов.',
+  a: [{ t: 'Место, где люди чувствуют себя услышанными', k: 'E' },
+  { t: 'Система, которая масштабируется сама', k: 'A' },
+  { t: 'Живая сеть связей и совместных проектов', k: 'C' },
+  { t: 'Лаборатория идей, меняющих индустрию', k: 'V' }] },
+{ id: 8, block: 3, bname: 'Профессиональная идентичность', multi: false,
+  q: 'Как ты принимаешь сложные решения?',
+  a: [{ t: 'Слушаю интуицию и мнение ключевых участников', k: 'E' },
+  { t: 'Собираю данные, строю матрицу вариантов', k: 'A' },
+  { t: 'Запускаю быстрый тест — результат покажет путь', k: 'C' },
+  { t: 'Смотрю в долгосрочную перспективу', k: 'V' }] },
+{ id: 9, block: 3, bname: 'Профессиональная идентичность', multi: false,
+  q: 'Что тебя больше всего мотивирует в работе с людьми?',
+  a: [{ t: 'Видеть, как люди раскрываются и растут', k: 'E' },
+  { t: 'Строить системы, которые работают без меня', k: 'A' },
+  { t: 'Чувствовать энергию и движение вокруг', k: 'C' },
+  { t: 'Создавать то, чего ещё не существовало', k: 'V' }] }];
+
+
+const BLOCK_REWARDS = {
+  1: { title: 'Коммуникационное ДНК', sub: 'Блок 1 завершён · Открытие',
+    badges: {
+      A: { badge: 'Системный коммуникатор', desc: 'Ты говоришь структурами. Когда ты входишь в разговор — хаос превращается в план. Это редкий дар в мире эмоций.', pos: 'Топ 15% по структурному мышлению' },
+      E: { badge: 'Глубинный слушатель', desc: 'Ты слышишь то, что не сказано вслух. Люди чувствуют это и открываются тебе раньше, чем сами понимают почему.', pos: 'Топ 12% по эмоциональному интеллекту' },
+      C: { badge: 'Катализатор разговоров', desc: 'Ты создаёшь движение. Там где ты — там диалог, энергия, жизнь. Ты умеешь зажигать пространство.', pos: 'Топ 10% по социальной энергии' },
+      V: { badge: 'Провокатор смыслов', desc: 'Ты задаёшь вопросы, которые меняют угол зрения. Твои слова остаются в голове надолго после разговора.', pos: 'Топ 8% по стратегическому мышлению' }
+    } },
+  2: { title: 'Рабочий стиль', sub: 'Блок 2 завершён · Кристаллизация',
+    badges: {
+      A: { badge: 'Архитектор процессов', desc: 'Ты мыслишь системами. Твои решения не тактические — они стратегические. Строишь то, что работает без тебя.', pos: 'Топ 18% по системному подходу' },
+      E: { badge: 'Хранитель атмосферы', desc: 'Ты чувствуешь пульс сообщества. Твои решения рождаются из эмпатии — и именно поэтому они правильные.', pos: 'Топ 11% по качеству отношений' },
+      C: { badge: 'Двигатель активаций', desc: 'Ты знаешь, как запустить волну. Твои активации становятся событиями, о которых говорят ещё долго.', pos: 'Топ 9% по запуску активностей' },
+      V: { badge: 'Стратегический провокатор', desc: 'Ты видишь игру на несколько ходов вперёд. Фидбек для тебя — не проблема, а данные для следующей версии.', pos: 'Топ 7% по стратегическому видению' }
+    } }
+};
+
+const ARCHETYPES = {
+  A: { name: 'Архитектор роста', sub: 'Systems Builder · Senior', pal: 'A', c1: '#FF8A3D', c2: '#FFB055',
+    desc: 'Ты превращаешь хаос в систему. Когда другие видят беспорядок — ты видишь архитектуру. Твои сообщества не просто растут, они масштабируются.',
+    power: 'Системное мышление',
+    powerDesc: 'Ты мыслишь процессами, а не людьми. Создаёшь экосистемы, которые работают без постоянного участия. Это главная суперсила роста.',
+    skills: [{ n: 'Стратегия', v: 92 }, { n: 'Аналитика', v: 88 }, { n: 'Системность', v: 95 }, { n: 'Эмпатия', v: 62 }, { n: 'Импульс', v: 57 }, { n: 'Лидерство', v: 78 }],
+    sections: [
+    { title: 'Чем мне не стоит заниматься',
+      body: 'Не берись за роли, где главное — живая импровизация без данных. Тебе тяжело в стартапах в режиме пожаротушения, командах без культуры процессов. Избегай позиций, где "сделай красиво" важнее чем "сделай правильно и измеримо".' },
+    { title: 'Каких напарников искать',
+      body: 'Ищи Эмпатичного лидера — он добавит теплоту туда, где ты строишь структуру. Коннектор будет двигателем активаций, которые ты спроектировал. Визионер расширит горизонт. Идеальный тандем: Архитектор + Коннектор — это рост x3.' },
+    { title: 'Какие проекты подходят',
+      body: 'Лучше всего — проекты на стадии growth и scale, когда есть хаос первого роста, но нет системы. Ты нужен там, где 10→100 или 100→1000 участников. Твой момент — Series A и позже. Избегай pre-product market fit.' },
+    { title: 'С какими частями бизнеса работать',
+      body: 'Product, Operations, Growth. Ты говоришь на языке продакт-менеджеров и аналитиков. Маркетинговые команды ценят твои дашборды. Growth-команды хотят твои процессы. Дружи с Data.' },
+    { title: 'Как презентовать себя работодателю',
+      body: '"За 6 месяцев увеличил retention на 34%, построил onboarding, снизивший churn новых участников на 22%. Построил систему: сообщество выросло с 800 до 5 000 активных участников без роста команды."\n\nГовори цифрами. Работодатели нанимают тебя, чтобы навести порядок — докажи, что твой порядок приносит деньги.' },
+    { title: 'Грейд и место среди коллег',
+      body: 'Senior Community Manager на пути к Lead. Ты уже опережаешь 80% коллег в структурном мышлении. Твоя точка роста — лидерство через людей, а не только через процессы. Научись делегировать мышление, а не только задачи.' },
+    { title: 'Перспективы и траектории роста',
+      body: 'Community Lead → Head of Community → VP Community / Director of Growth\n\nАльтернативный трек: Product Manager в community-driven продукте или Operations Lead. Твоё мышление ценится в стратегическом консалтинге.' },
+    { title: 'Сколько ты стоишь по рынку',
+      body: 'Россия: 80 000 — 180 000 ₽ / мес\nМеждународный рынок: $2 500 — $5 000 / мес\n\nLead-уровень: x1.5–2 от верхней планки. С портфолио роста сообществ + системными кейсами — ближе к потолку диапазона.' }]
+  },
+  E: { name: 'Эмпатичный лидер', sub: 'People First · Community Heart', pal: 'E', c1: '#FF6B9A', c2: '#FF92BB',
+    desc: 'Ты — сердце любого сообщества. Люди тянутся к тебе, потому что чувствуют: ты их слышишь. По-настоящему. Твоя сила не в процессах — она в людях.',
+    power: 'Эмоциональный интеллект',
+    powerDesc: 'Слышишь то, что не сказано вслух. Считываешь настроение через одно сообщение. Создаёшь пространство, в котором люди хотят оставаться.',
+    skills: [{ n: 'Стратегия', v: 60 }, { n: 'Аналитика', v: 54 }, { n: 'Системность', v: 67 }, { n: 'Эмпатия', v: 97 }, { n: 'Импульс', v: 80 }, { n: 'Лидерство', v: 73 }],
+    sections: [
+    { title: 'Чем мне не стоит заниматься',
+      body: 'Стремись избегать чисто операционных ролей без живого общения. Аналитические позиции "за экраном" истощают тебя. Не бери на себя роль системного архитектора — это не твоя природа, и ты будешь страдать.' },
+    { title: 'Каких напарников искать',
+      body: 'Тебе нужен Архитектор — он выстроит систему, которую ты наполнишь теплом. Визионер удержит тебя в стратегическом тонусе. Идеальный тандем: Эмпатичный лидер + Архитектор — это сообщество, которое и работает, и живёт.' },
+    { title: 'Какие проекты подходят',
+      body: 'Зрелые сообщества, где нужно восстановить доверие, или новые — где важно создать культуру с нуля. Ты особенно ценен на стадии 0→1 и в кризисные периоды. Избегай чисто growth-ролей без человеческого контакта.' },
+    { title: 'С какими частями бизнеса работать',
+      body: 'HR, Customer Success, Brand. Ты строишь лояльность — и бизнес это ценит. Product-команды любят тебя за качественный пользовательский инсайт. Customer Experience хочет тебя в команду.' },
+    { title: 'Как презентовать себя работодателю',
+      body: '"За последний год NPS участников вырос с 43 до 71 — за счёт персонального онбординга, который я разработал. Превращаю незнакомцев в амбассадоров бренда."\n\nГовори об удержании, LTV, referral-петлях. Показывай, как твоя работа с людьми конвертируется в деньги.' },
+    { title: 'Грейд и место среди коллег',
+      body: 'Middle+ / Senior. Ты глубже большинства в понимании людей. Для перехода на Senior — научись переводить эмпатию в измеримые результаты. Главная задача: найти свои метрики и говорить на языке бизнеса.' },
+    { title: 'Перспективы и траектории роста',
+      body: 'Senior CM → Community Lead → Head of People Experience\n\nАльтернативный трек: HR Business Partner, Chief Culture Officer, Customer Success Lead. Твои навыки стоят очень дорого в B2B-продуктах.' },
+    { title: 'Сколько ты стоишь по рынку',
+      body: 'Россия: 65 000 — 150 000 ₽ / мес\nМеждународный рынок: $2 000 — $4 500 / мес\n\nС опытом в retention-метриках и customer success — ближе к верхней планке. Лояльность клиентов стоит дорого.' }]
+  },
+  C: { name: 'Коннектор', sub: 'Network Catalyst · Energy Driver', pal: 'C', c1: '#3BE8C5', c2: '#5BFFD5',
+    desc: 'Ты — катализатор. Там где ты — движение, коллаборации, синергия. Ты не строишь сообщество, ты его зажигаешь. Твоя энергия заразительна.',
+    power: 'Социальная энергия',
+    powerDesc: 'Соединяешь людей так, что между ними возникает химия. Твои активации становятся событиями. Твой нетворк работает, даже когда ты спишь.',
+    skills: [{ n: 'Стратегия', v: 68 }, { n: 'Аналитика', v: 56 }, { n: 'Системность', v: 60 }, { n: 'Эмпатия', v: 82 }, { n: 'Импульс', v: 97 }, { n: 'Лидерство', v: 74 }],
+    sections: [
+    { title: 'Чем мне не стоит заниматься',
+      body: 'Избегай ролей, где главное — методичное ведение процессов и документирование без контакта с людьми. Тебе скучно в изоляции. Сторонись позиций без права на эксперимент и без живого нетворка.' },
+    { title: 'Каких напарников искать',
+      body: 'Тебе нужен Архитектор — он придаст структуру твоей энергии. Эмпатичный лидер поможет удерживать людей, которых ты притягиваешь. Идеальный тандем: Коннектор + Архитектор = вирусный рост с системой.' },
+    { title: 'Какие проекты подходят',
+      body: 'Ты идеален на запуске — stage 0→1, когда нужно набрать первых участников и создать buzz. Незаменим в перезапусках. Тебе периодически нужна смена контекста — нельзя делать одно и то же слишком долго.' },
+    { title: 'С какими частями бизнеса работать',
+      body: 'Marketing, Partnerships, Events. Ты звезда коллабораций и ambassador-программ. Growth-команды хотят тебя за viral loops. PR и brand-команды ценят твой нетворк.' },
+    { title: 'Как презентовать себя работодателю',
+      body: '"Запустил ambassador-программу с нуля: 60 участников за 3 месяца, органический охват x4. Умею превращать людей в фанатов продукта."\n\nГовори об охвате, росте, виральности. Показывай коллаборации и партнёрства как твой конкурентный актив.' },
+    { title: 'Грейд и место среди коллег',
+      body: 'Middle / Senior. На уровне энергии ты недосягаем для большинства. Для Senior — научись измерять результаты своих активаций в цифрах. Построй портфолио с конкретными метриками роста.' },
+    { title: 'Перспективы и траектории роста',
+      body: 'Senior CM → Head of Community Growth → Chief Community Officer\n\nАльтернативный трек: Partnership Lead, Growth Hacker, CMO. Твои навыки работают и в стартап-среде, и в крупных компаниях.' },
+    { title: 'Сколько ты стоишь по рынку',
+      body: 'Россия: 70 000 — 160 000 ₽ / мес\nМеждународный рынок: $2 200 — $4 800 / мес\n\nС подтверждёнными кейсами роста аудитории — топ диапазона. Нетворк — твой главный актив.' }]
+  },
+  V: { name: 'Визионер', sub: 'Future Architect · Thought Leader', pal: 'V', c1: '#A855F7', c2: '#C084FC',
+    desc: 'Ты видишь то, чего ещё нет. Создаёшь концепции, которые становятся движениями. Твоё сообщество — это не группа людей, это идеологическое ядро.',
+    power: 'Стратегическое видение',
+    powerDesc: 'Видишь паттерны там, где другие видят хаос. Создаёшь нарративы, объединяющие людей вокруг большой идеи. Это встречается редко.',
+    skills: [{ n: 'Стратегия', v: 96 }, { n: 'Аналитика', v: 75 }, { n: 'Системность', v: 70 }, { n: 'Эмпатия', v: 68 }, { n: 'Импульс', v: 73 }, { n: 'Лидерство', v: 88 }],
+    sections: [
+    { title: 'Чем мне не стоит заниматься',
+      body: 'Не берись за execution-роли без поддержки команды. Тебе трудно с рутиной и повторяющимися задачами. Избегай позиций без стратегической автономии и права на эксперимент с концепцией.' },
+    { title: 'Каких напарников искать',
+      body: 'Тебе нужен Архитектор — переведёт видение в систему. Коннектор распространит твои идеи в нетворке. Идеальный тандем: Визионер + Архитектор = стратегия с результатом. Без Архитектора ты рискуешь остаться в пространстве идей.' },
+    { title: 'Какие проекты подходят',
+      body: 'Создание сообществ с нуля вокруг идеи или продукта. Незаменим на поворотных точках — ребрендинг, смена позиционирования, выход на новый рынок. Тебе нужна чистая страница.' },
+    { title: 'С какими частями бизнеса работать',
+      body: 'Product Strategy, Brand, Innovation. Ты ценен для C-level как советник по community-стратегии. Тебя хотят CEO стартапов и директора по маркетингу крупных компаний.' },
+    { title: 'Как презентовать себя работодателю',
+      body: '"Построил community-стратегию, которая стала основой для позиционирования продукта. Наше сообщество — не канал, а конкурентное преимущество."\n\nГовори о brand equity и стратегическом влиянии. Покажи, как твоя концепция повлияла на продукт или бизнес.' },
+    { title: 'Грейд и место среди коллег',
+      body: 'Senior / Lead. Твоё мышление уже на уровне лидеров. Для Head-уровня — развивай навык вдохновлять команду и переводить видение в конкретные измеримые результаты.' },
+    { title: 'Перспективы и траектории роста',
+      body: 'Community Lead → Head of Community → Chief Community Officer / VP Brand\n\nАльтернативный трек: Founder, Brand Strategist, Chief of Staff. Ты создан для лидерских позиций.' },
+    { title: 'Сколько ты стоишь по рынку',
+      body: 'Россия: 90 000 — 200 000 ₽ / мес\nМеждународный рынок: $3 000 — $6 000 / мес\n\nВ стратегических ролях с автономией — потолок не ограничен. Ключевое: портфолио концепций с измеримым влиянием.' }]
+  }
+};
+
+// ══════════════════════════════════════════════════════
+// PARTICLE CANVAS
+// ══════════════════════════════════════════════════════
+const Particle = ({ size = 240, pal = 'neutral', morph = 0, loading = false, ripSig = 0 }) => {
+  const cvs = useRef(null),anim = useRef(null),T = useRef(0);
+  const ripT = useRef(0),lastRip = useRef(0);
+  const palRef = useRef(pal),mRef = useRef(morph),lRef = useRef(loading);
+  useEffect(() => {palRef.current = pal;}, [pal]);
+  useEffect(() => {mRef.current = morph;}, [morph]);
+  useEffect(() => {lRef.current = loading;}, [loading]);
+  useEffect(() => {if (ripSig !== lastRip.current) {ripT.current = 0;lastRip.current = ripSig;}}, [ripSig]);
+
+  useEffect(() => {
+    const canvas = cvs.current;if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;canvas.height = size * dpr;
+    canvas.style.width = size + 'px';canvas.style.height = size + 'px';
+    ctx.scale(dpr, dpr);
+    const cx = size / 2,cy = size / 2,baseR = size * .30,N = 10;
+
+    const draw = () => {
+      const t = T.current,p = PALETTES[palRef.current] || PALETTES.neutral;
+      const m = mRef.current,load = lRef.current;
+      ctx.clearRect(0, 0, size, size);
+      // outer glow
+      const numH = load ? 4 : 2;
+      for (let h = 0; h < numH; h++) {
+        const hr = baseR * (1.18 + h * .2) + Math.sin(t * 1.3 + h) * baseR * .03;
+        const og = ctx.createRadialGradient(cx, cy, hr * .6, cx, cy, hr * 1.5);
+        const rgb = hexRgb(p[0]);
+        og.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},${.13 - h * .03})`);
+        og.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.beginPath();ctx.arc(cx, cy, hr * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = og;ctx.fill();
+      }
+      // blob
+      const pts = [];
+      for (let i = 0; i < N; i++) {
+        const ang = i / N * Math.PI * 2 - Math.PI / 2;
+        let r = baseR;
+        r += Math.sin(ang * 2 + t * 1.1) * baseR * .07;
+        r += Math.sin(ang * 3 + t * .65) * baseR * .05;
+        r += Math.cos(ang * 1.5 + t * 1.9) * baseR * .045;
+        r += Math.sin(ang * 4 + t * .9) * baseR * .03;
+        if (m > 0) {r += Math.sin(ang * 5 + t * 2.3) * baseR * .045 * m;r += Math.cos(ang * 7 + t * 1.6) * baseR * .03 * m;}
+        if (load) {r += Math.sin(ang * 6 + t * 3) * baseR * .055;r += Math.cos(ang * 9 + t * 2.1) * baseR * .035;}
+        const rt = ripT.current;
+        if (rt < 1) r += Math.sin((1 - rt) * Math.PI * 3 - ang * 2) * baseR * .07 * (1 - rt);
+        pts.push({ x: cx + Math.cos(ang) * r, y: cy + Math.sin(ang) * r });
+      }
+      ctx.beginPath();
+      for (let i = 0; i < N; i++) {
+        const p0 = pts[(i - 1 + N) % N],p1 = pts[i],p2 = pts[(i + 1) % N],p3 = pts[(i + 2) % N];
+        const cp1x = p1.x + (p2.x - p0.x) / 6,cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6,cp2y = p2.y - (p3.y - p1.y) / 6;
+        if (i === 0) ctx.moveTo(p1.x, p1.y);
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+      }
+      ctx.closePath();
+      const grd = ctx.createRadialGradient(cx - baseR * .2, cy - baseR * .25, 0, cx + baseR * .1, cy + baseR * .1, baseR * 1.4);
+      const [ca, cb, cc] = p.map(hexRgb);
+      grd.addColorStop(0, `rgba(${ca.r},${ca.g},${ca.b},.95)`);
+      grd.addColorStop(.45, `rgba(${cb.r},${cb.g},${cb.b},.8)`);
+      grd.addColorStop(1, `rgba(${cc.r},${cc.g},${cc.b},.5)`);
+      ctx.save();ctx.shadowColor = p[0];ctx.shadowBlur = 32;ctx.fillStyle = grd;ctx.fill();ctx.restore();
+      // highlight
+      const sp = ctx.createRadialGradient(cx - baseR * .28, cy - baseR * .35, 0, cx - baseR * .08, cy - baseR * .1, baseR * .6);
+      sp.addColorStop(0, 'rgba(255,255,255,.28)');sp.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sp;ctx.fill();
+      // internal network
+      if (m > .25) {
+        ctx.save();ctx.clip();
+        const nn = Math.floor(3 + m * 5);
+        const nds = [];
+        for (let n = 0; n < nn; n++) {
+          const na = n / nn * Math.PI * 2 + t * .4;
+          const nr = baseR * (.22 + .28 * (n % 2)) + Math.sin(t + n * 2) * baseR * .07;
+          nds.push({ x: cx + Math.cos(na) * nr, y: cy + Math.sin(na) * nr });
+        }
+        for (let a = 0; a < nds.length; a++) for (let b = a + 1; b < nds.length; b++) {
+          const d = Math.hypot(nds[a].x - nds[b].x, nds[a].y - nds[b].y);
+          if (d < baseR * 1.1) {
+            ctx.beginPath();ctx.moveTo(nds[a].x, nds[a].y);ctx.lineTo(nds[b].x, nds[b].y);
+            ctx.strokeStyle = `rgba(255,255,255,${.2 * (1 - d / (baseR * 1.1)) * m})`;ctx.lineWidth = .7;ctx.stroke();
+          }
+        }
+        nds.forEach((nd) => {ctx.beginPath();ctx.arc(nd.x, nd.y, 1.8, 0, Math.PI * 2);ctx.fillStyle = `rgba(255,255,255,${.5 * m})`;ctx.fill();});
+        ctx.restore();
+      }
+      // orbs
+      const no = Math.floor(5 + m * 5 + (load ? 4 : 0));
+      for (let o = 0; o < no; o++) {
+        const oa = o / no * Math.PI * 2 + t * (.4 + o * .06) + o * 1.1;
+        const or = baseR * (1.28 + .17 * Math.sin(t * .9 + o * 1.3));
+        const os = 1.5 + Math.sin(t * 1.4 + o) * .8;
+        ctx.beginPath();ctx.arc(cx + Math.cos(oa) * or, cy + Math.sin(oa) * or, os, 0, Math.PI * 2);
+        const oc = hexRgb(p[o % p.length]);
+        ctx.shadowColor = p[o % p.length];ctx.shadowBlur = 7;
+        ctx.fillStyle = `rgba(${oc.r},${oc.g},${oc.b},${.55 + .35 * Math.sin(t + o)})`;ctx.fill();
+      }
+    };
+
+    const loop = () => {T.current += .014;if (ripT.current < 1) ripT.current += .025;draw();anim.current = requestAnimationFrame(loop);};
+    loop();
+    return () => cancelAnimationFrame(anim.current);
+  }, [size]);
+
+  return <canvas ref={cvs} style={{ display: 'block', cursor: 'pointer' }} />;
+};
+
+// ══════════════════════════════════════════════════════
+// ROSE CHART (SVG Radar)
+// ══════════════════════════════════════════════════════
+const RoseChart = ({ skills, c1, c2 }) => {
+  const [progress, setProgress] = useState(0);
+  const [hovered, setHovered] = useState(null);
+  const svgSize = 220,cx = 110,cy = 110,maxR = 78;
+  const N = skills.length;
+
+  useEffect(() => {
+    let p = 0,raf;
+    const delay = setTimeout(() => {
+      const step = () => {p = Math.min(p + .025, 1);setProgress(p);if (p < 1) raf = requestAnimationFrame(step);};
+      step();
+    }, 400);
+    return () => {clearTimeout(delay);cancelAnimationFrame(raf);};
+  }, []);
+
+  const pt = (i, v) => {
+    const ang = i / N * Math.PI * 2 - Math.PI / 2;
+    const r = v / 100 * maxR * progress;
+    return [cx + Math.cos(ang) * r, cy + Math.sin(ang) * r];
+  };
+
+  const poly = skills.map((s, i) => pt(i, s.v));
+  const pathD = poly.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ') + 'Z';
+
+  const gridLevels = [25, 50, 75, 100];
+  const labelR = maxR + 20;
+
+  return (
+    <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`} style={{ overflow: 'visible' }}>
+      {gridLevels.map((lv) => {
+        const gpts = skills.map((_, i) => {
+          const ang = i / N * Math.PI * 2 - Math.PI / 2;
+          const r = lv / 100 * maxR;
+          return `${cx + Math.cos(ang) * r},${cy + Math.sin(ang) * r}`;
+        }).join(' ');
+        return <polygon key={lv} points={gpts} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" />;
+      })}
+      {skills.map((_, i) => {
+        const ang = i / N * Math.PI * 2 - Math.PI / 2;
+        return <line key={i} x1={cx} y1={cy} x2={cx + Math.cos(ang) * maxR} y2={cy + Math.sin(ang) * maxR} stroke="rgba(255,255,255,0.1)" strokeWidth="0.6" />;
+      })}
+      <path d={pathD} fill={`${c1}22`} stroke={c1} strokeWidth="1.8" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 6px ${c1}60)` }} />
+      {poly.map(([x, y], i) =>
+      <circle key={i} cx={x} cy={y} r={hovered === i ? 5 : 3.5} fill={c1}
+      style={{ filter: `drop-shadow(0 0 5px ${c1})`, cursor: 'pointer', transition: 'r 0.15s' }}
+      onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} />
+      )}
+      {skills.map((s, i) => {
+        const ang = i / N * Math.PI * 2 - Math.PI / 2;
+        const lx = cx + Math.cos(ang) * labelR,ly = cy + Math.sin(ang) * labelR;
+        const active = hovered === i;
+        return (
+          <g key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ cursor: 'pointer' }}>
+            <text x={lx} y={ly - .5} textAnchor="middle" dominantBaseline="middle"
+            fontSize="9" fill={active ? c1 : "rgba(255,255,255,0.45)"} fontFamily="Space Grotesk,sans-serif" fontWeight={active ? 600 : 400}
+            style={{ transition: 'fill 0.15s' }}>
+              {s.n}
+            </text>
+            {active && <text x={lx} y={ly + 9} textAnchor="middle" fontSize="8" fill={c1} fontFamily="Space Grotesk,sans-serif" fontWeight={600}>{s.v}</text>}
+          </g>);
+
+      })}
+    </svg>);
+
+};
+
+// ══════════════════════════════════════════════════════
+// INTRO SCREEN
+// ══════════════════════════════════════════════════════
+const MiniParticle = ({ color, size = 32 }) =>
+<div style={{
+  width: size, height: size, borderRadius: '50%', flexShrink: 0,
+  background: `radial-gradient(circle at 35% 30%, ${color}cc, ${color}44)`,
+  boxShadow: `0 0 12px ${color}55`
+}} />;
+
+
+const IntroScreen = ({ onStart, muted, setMuted }) => {
+  const [page, setPage] = useState(0);
+  const scrollRef = useRef(null);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const p = Math.round(scrollRef.current.scrollTop / scrollRef.current.clientHeight);
+    setPage(p);
+  }, []);
+
+  const panels = INTRO;
+
+  return (
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      {/* mute toggle */}
+      <button onClick={() => setMuted((m) => !m)} style={{
+        position: 'absolute', top: 52, right: 20, zIndex: 100,
+        width: 34, height: 34, borderRadius: '50%',
+        background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+        color: 'rgba(255,255,255,0.5)', fontSize: '14px', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>{muted ? '🔇' : '🔊'}</button>
+
+      {/* pagination dots */}
+      <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px', zIndex: 100 }}>
+        {panels.map((_, i) =>
+        <div key={i} style={{ width: i === page ? 18 : 6, height: 6, borderRadius: '3px', background: i === page ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.2)', transition: 'all 0.3s' }} />
+        )}
+      </div>
+
+      <div ref={scrollRef} onScroll={handleScroll} className="isc">
+        {/* Panel 1 */}
+        <div className="ipanel" style={{
+          background: 'radial-gradient(ellipse 80% 60% at 50% 38%, #1a0822 0%, #07070f 65%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+          padding: '80px 28px 70px'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 14px', borderRadius: '100px', border: '1px solid rgba(255,107,154,0.25)', marginBottom: '20px' }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF6B9A', boxShadow: '0 0 6px #FF6B9A' }} />
+              <span style={{ fontSize: '10px', letterSpacing: '0.14em', color: 'rgba(255,107,154,0.75)', textTransform: 'uppercase' }}>Твой цифровой слепок</span>
+            </div>
+            <h1 style={{ fontSize: '30px', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.04em', color: '#fff', whiteSpace: 'pre-line' }}>{'Это твоя частица'}</h1>
+          </div>
+
+          <div onClick={() => {}}>
+            <Particle size={220} pal="neutral" morph={0} />
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', marginBottom: '16px' }}>
+              Как художник использует кисти и краски — ты используешь сообщество, чтобы выразить себя. 9 вопросов покажут твой профессиональный портрет как луч света.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>
+              <span>Листай вниз</span>
+              <span style={{ animation: 'shimmer 1.5s infinite' }}>↓</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Panel 2 — 4 types */}
+        <div className="ipanel" style={{
+          background: 'radial-gradient(ellipse 80% 50% at 50% 50%, #0e0718 0%, #07070f 70%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '52px 24px', gap: '24px'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 14px', borderRadius: '100px', border: '1px solid rgba(168,85,247,0.25)', marginBottom: '14px' }}>
+              <span style={{ fontSize: '10px', letterSpacing: '0.14em', color: 'rgba(168,85,247,0.75)', textTransform: 'uppercase' }}>ЧЕТЫРЕ СТИХИИ</span>
+            </div>
+            <h2 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.03em', color: '#fff', lineHeight: 1.15, whiteSpace: 'pre-line' }}>{'Кем ты\nможешь быть?'}</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', width: '100%' }}>
+            {[
+            { k: 'A', name: 'Архитектор роста', c: '#FF8A3D', line: 'Строит системы, которые живут без него' },
+            { k: 'E', name: 'Эмпатичный лидер', c: '#FF6B9A', line: 'Слышит то, что не сказано вслух' },
+            { k: 'C', name: 'Коннектор', c: '#3BE8C5', line: 'Создаёт химию там, где её не было' },
+            { k: 'V', name: 'Визионер', c: '#A855F7', line: 'Видит будущее раньше всех' }].
+            map((tp) =>
+            <div key={tp.k} style={{
+              padding: '16px 14px', borderRadius: '16px',
+              background: 'rgba(255,255,255,0.04)',
+              border: `1px solid ${tp.c}22`
+            }}>
+                <MiniParticle color={tp.c} size={28} />
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', marginTop: '10px', marginBottom: '4px', lineHeight: 1.2 }}>{tp.name}</p>
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.45 }}>{tp.line}</p>
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>
+            <span>Ещё один шаг</span><span style={{ animation: 'shimmer 1.5s infinite' }}>↓</span>
+          </div>
+        </div>
+
+        {/* Panel 3 — CTA */}
+        <div className="ipanel" style={{
+          background: 'radial-gradient(ellipse 80% 65% at 50% 42%, #1a0822 0%, #07070f 65%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+          padding: '80px 28px 60px'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 14px', borderRadius: '100px', border: '1px solid rgba(59,232,197,0.25)', marginBottom: '20px' }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#3BE8C5', boxShadow: '0 0 6px #3BE8C5' }} />
+              <span style={{ fontSize: '10px', letterSpacing: '0.14em', color: 'rgba(59,232,197,0.75)', textTransform: 'uppercase' }}>Готово к старту</span>
+            </div>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.04em', color: '#fff', lineHeight: 1.15, whiteSpace: 'pre-line' }}>{'Твоя частица\nуже ждёт.'}</h2>
+          </div>
+          <Particle size={224} pal="neutral" morph={0} />
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px', lineHeight: 1.65 }}>
+              9 вопросов — 3 блока — профиль,<br />который останется с тобой навсегда.
+            </p>
+            <button onClick={() => {SFX.trans(muted);onStart();}} style={{
+              width: '100%', height: '54px',
+              background: 'linear-gradient(135deg,#FF6B9A,#FF8A3D)',
+              border: 'none', borderRadius: '16px',
+              color: '#fff', fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+              boxShadow: '0 8px 28px rgba(255,107,154,0.38)', letterSpacing: '-0.01em'
+            }}>Начать исследование</button>
+          </div>
+        </div>
+      </div>
+    </div>);
+
+};
+
+// ══════════════════════════════════════════════════════
+// ANSWER OPTION — with upward pulse
+// ══════════════════════════════════════════════════════
+const AnswerOpt = ({ text, idx, selected, onSelect, c1, disabled, multi }) => {
+  const [pulses, setPulses] = useState([]);
+  const handleClick = () => {
+    if (disabled) return;
+    if (!selected) {
+      const id = Date.now();
+      setPulses((pp) => [...pp, id]);
+      setTimeout(() => setPulses((pp) => pp.filter((p) => p !== id)), 700);
+    }
+    onSelect(idx);
+  };
+  const selColor = c1 || '#FF6B9A';
+  return (
+    <div onClick={handleClick} style={{ position: 'relative', overflow: 'visible' }}>
+      {pulses.map((id) =>
+      <div key={id} style={{
+        position: 'absolute', left: '50%', top: 0,
+        width: 10, height: 10, marginLeft: -5,
+        borderRadius: '50%', background: selColor,
+        boxShadow: `0 0 8px ${selColor}`,
+        pointerEvents: 'none', zIndex: 10,
+        animation: 'pulseUp 0.65s ease-out forwards'
+      }} />
+      )}
+      <div style={{
+        padding: '13px 16px',
+        background: selected ? `linear-gradient(135deg,${selColor}18,${selColor}0a)` : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${selected ? selColor + '44' : 'rgba(255,255,255,0.07)'}`,
+        borderRadius: '13px', cursor: 'pointer',
+        transform: selected ? 'scale(1.01)' : 'scale(1)',
+        transition: 'all 0.2s ease',
+        boxShadow: selected ? `0 4px 20px ${selColor}18` : 'none',
+        display: 'flex', alignItems: 'flex-start', gap: '10px'
+      }}>
+        <div style={{
+          width: 18, height: 18, minWidth: 18, borderRadius: multi ? '4px' : '50%',
+          border: `1.5px solid ${selected ? selColor : 'rgba(255,255,255,0.2)'}`,
+          background: selected ? `${selColor}25` : 'transparent',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginTop: '1px', flexShrink: 0, transition: 'all 0.18s'
+        }}>
+          {selected && <div style={{ width: 6, height: 6, borderRadius: multi ? '1px' : '50%', background: selColor }} />}
+        </div>
+        <span style={{ fontSize: '13px', lineHeight: 1.5, color: selected ? '#fff' : 'rgba(255,255,255,0.7)', transition: 'color 0.18s' }}>{text}</span>
+      </div>
+    </div>);
+
+};
+
+// ══════════════════════════════════════════════════════
+// QUIZ SCREEN
+// ══════════════════════════════════════════════════════
+const QuizScreen = ({ qIdx, answers, onAnswer, muted }) => {
+  const q = QS[qIdx];
+  const [sels, setSels] = useState(new Set());
+  const [going, setGoing] = useState(false);
+  const [vis, setVis] = useState(false);
+  const [rip, setRip] = useState(0);
+
+  useEffect(() => {setVis(false);setSels(new Set());const t = setTimeout(() => setVis(true), 60);return () => clearTimeout(t);}, [qIdx]);
+
+  const getPal = () => {if (answers.length === 0) return 'neutral';const last = answers[answers.length - 1];return last in PALETTES ? last : 'neutral';};
+
+  const handleSelect = (i) => {
+    if (going) return;
+    SFX.pick(muted);
+    setRip((r) => r + 1);
+    if (q.multi) {
+      setSels((prev) => {
+        const ns = new Set(prev);
+        if (ns.has(i)) ns.delete(i);else if (ns.size < (q.max || 2)) ns.add(i);
+        return ns;
+      });
+    } else {
+      setSels(new Set([i]));
+      // auto-advance for single select
+      setTimeout(() => {
+        setGoing(true);
+        setTimeout(() => {onAnswer([q.a[i].k]);setGoing(false);}, 380);
+      }, 600);
+    }
+  };
+
+  const handleContinue = () => {
+    if (sels.size === 0 || going) return;
+    setGoing(true);
+    const keys = [...sels].map((i) => q.a[i].k);
+    setTimeout(() => {onAnswer(keys);setGoing(false);}, 380);
+  };
+
+  const progress = qIdx / QS.length;
+  const morph = answers.length / QS.length;
+  const isMulti = !!q.multi;
+
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      background: 'radial-gradient(ellipse 75% 55% at 50% 28%, #150820 0%, #07070f 65%)',
+      display: 'flex', flexDirection: 'column',
+      opacity: vis && !going ? 1 : 0, transition: 'opacity 0.35s ease'
+    }}>
+      {/* Header */}
+      <div style={{ padding: '50px 22px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
+          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.28)', letterSpacing: '0.07em' }}>{qIdx + 1} / {QS.length}</span>
+          <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.28)', letterSpacing: '0.1em', textTransform: 'uppercase', border: '1px solid rgba(255,255,255,0.1)', padding: '3px 9px', borderRadius: '100px' }}>{q.bname}</span>
+        </div>
+        <div style={{ height: '2px', background: 'rgba(255,255,255,0.07)', borderRadius: '1px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg,#FF6B9A,#FF8A3D)', transition: 'width 0.5s ease', boxShadow: '0 0 10px rgba(255,107,154,0.5)' }} />
+        </div>
+      </div>
+
+      {/* Particle */}
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '18px 0 10px' }}
+      onClick={() => setRip((r) => r + 1)} onTouchStart={() => setRip((r) => r + 1)}>
+        <Particle size={148} pal={getPal()} morph={morph} ripSig={rip} />
+      </div>
+
+      {/* Question */}
+      <div style={{ padding: '0 24px 16px' }}>
+        <p style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1.4, color: '#fff', letterSpacing: '-0.02em', textAlign: 'center' }}>
+          {q.q}
+        </p>
+        {isMulti && <p style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '6px', letterSpacing: '0.05em' }}>до {q.max} вариантов</p>}
+      </div>
+
+      {/* Answers */}
+      <div style={{ flex: 1, padding: '0 18px', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }}>
+        {q.a.map((a, i) =>
+        <AnswerOpt key={i} idx={i} text={a.t} selected={sels.has(i)}
+        onSelect={handleSelect} c1={ARCHETYPES[a.k]?.c1} multi={isMulti}
+        disabled={going || !sels.has(i) && isMulti && sels.size >= (q.max || 2)} />
+        )}
+      </div>
+
+      {/* Continue for multi-select */}
+      {isMulti &&
+      <div style={{ padding: '12px 18px 28px' }}>
+          <button onClick={handleContinue} disabled={sels.size === 0 || going} style={{
+          width: '100%', height: '48px',
+          background: sels.size > 0 ? 'linear-gradient(135deg,#FF6B9A,#FF8A3D)' : 'rgba(255,255,255,0.07)',
+          border: 'none', borderRadius: '14px',
+          color: sels.size > 0 ? '#fff' : 'rgba(255,255,255,0.3)',
+          fontSize: '14px', fontWeight: 600, cursor: sels.size > 0 ? 'pointer' : 'default',
+          transition: 'all 0.25s',
+          boxShadow: sels.size > 0 ? '0 6px 20px rgba(255,107,154,0.3)' : 'none'
+        }}>
+            {sels.size > 0 ? `Продолжить (${sels.size}/${q.max})` : 'Выбери хотя бы один'}
+          </button>
+        </div>
+      }
+    </div>);
+
+};
+
+// ══════════════════════════════════════════════════════
+// BLOCK REWARD
+// ══════════════════════════════════════════════════════
+const BlockReward = ({ phase, answers, onContinue, muted }) => {
+  const [vis, setVis] = useState(false);
+  const [rip, setRip] = useState(0);
+  const reward = BLOCK_REWARDS[phase];
+
+  // calc dominant in this block
+  const start = (phase - 1) * 3,slice = answers.slice(start, start + 3);
+  const counts = {};slice.forEach((k) => {counts[k] = (counts[k] || 0) + 1;});
+  const dom = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'A';
+  const badge = reward.badges[dom];
+  const arch = ARCHETYPES[dom];
+
+  useEffect(() => {
+    setTimeout(() => {setVis(true);SFX.block(muted);}, 100);
+    setRip(1);
+  }, []);
+
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      background: `radial-gradient(ellipse 85% 65% at 50% 40%, ${arch.c1}18 0%, #07070f 60%)`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+      padding: '60px 28px 48px',
+      opacity: vis ? 1 : 0, transition: 'opacity 0.6s ease'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 14px', borderRadius: '100px', border: `1px solid ${arch.c1}35`, marginBottom: '16px' }}>
+          <div style={{ width: 5, height: 5, borderRadius: '50%', background: arch.c1, boxShadow: `0 0 6px ${arch.c1}` }} />
+          <span style={{ fontSize: '10px', letterSpacing: '0.14em', color: `${arch.c1}cc`, textTransform: 'uppercase' }}>{reward.sub}</span>
+        </div>
+        <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', letterSpacing: '-0.03em', marginBottom: '4px' }}>{reward.title}</h2>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em' }}>Открытие: ты узнал кое-что важное</p>
+      </div>
+
+      <div style={{ textAlign: 'center', position: 'relative' }} onClick={() => setRip((r) => r + 1)}>
+        <Particle size={200} pal={dom} morph={0.6} ripSig={rip} />
+        <div style={{
+          position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+          padding: '5px 14px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)',
+          borderRadius: '100px', border: `1px solid ${arch.c1}30`,
+          fontSize: '11px', fontWeight: 600, color: arch.c1, whiteSpace: 'nowrap', letterSpacing: '0.05em'
+        }}>{badge.badge}</div>
+      </div>
+
+      <div style={{
+        width: '100%', padding: '20px',
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${arch.c1}22`, borderRadius: '18px'
+      }}>
+        <p style={{ fontSize: '13px', lineHeight: 1.65, color: 'rgba(255,255,255,0.65)', marginBottom: '12px' }}>
+          {badge.desc}
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: `${arch.c1}12`, borderRadius: '10px' }}>
+          <div style={{ width: 5, height: 5, borderRadius: '50%', background: arch.c1, boxShadow: `0 0 5px ${arch.c1}`, flexShrink: 0 }} />
+          <span style={{ fontSize: '11px', color: arch.c1, fontWeight: 500 }}>{badge.pos}</span>
+        </div>
+      </div>
+
+      <button onClick={() => {SFX.trans(muted);onContinue();}} style={{
+        width: '100%', height: '52px',
+        background: `linear-gradient(135deg,${arch.c1},${arch.c2})`,
+        border: 'none', borderRadius: '14px', color: '#fff',
+        fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+        boxShadow: `0 6px 24px ${arch.c1}35`
+      }}>
+        Продолжить исследование
+      </button>
+    </div>);
+
+};
+
+// ══════════════════════════════════════════════════════
+// LOADING
+// ══════════════════════════════════════════════════════
+const LoadingScreen = ({ onDone, muted }) => {
+  const [pct, setPct] = useState(0);
+  const [rip, setRip] = useState(0);
+  const [vis, setVis] = useState(false);
+  const texts = ["Анализируем ответы...", "Формируем твой профиль...", "Кристаллизуем форму...", "Открываем профиль..."];
+  const ti = pct < 25 ? 0 : pct < 55 ? 1 : pct < 85 ? 2 : 3;
+  useEffect(() => {
+    setVis(true);SFX.trans(muted);
+    let p = 0;
+    const iv = setInterval(() => {p += 1.2;setPct(Math.min(p, 100));if (p >= 100) {clearInterval(iv);setTimeout(() => {SFX.reveal(muted);onDone();}, 700);}}, 28);
+    const ri = setInterval(() => setRip((r) => r + 1), 900);
+    return () => {clearInterval(iv);clearInterval(ri);};
+  }, []);
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      background: 'radial-gradient(ellipse 90% 70% at 50% 50%, #150820 0%, #07070f 70%)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '32px',
+      opacity: vis ? 1 : 0, transition: 'opacity 0.4s'
+    }}>
+      <Particle size={210} pal="neutral" morph={1} loading={true} ripSig={rip} />
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', marginBottom: '16px', height: '16px' }}>{texts[ti]}</p>
+        <div style={{ width: '130px', height: '1.5px', background: 'rgba(255,255,255,0.08)', borderRadius: '1px', overflow: 'hidden', margin: '0 auto' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#FF6B9A,#3BE8C5)', transition: 'width 0.06s linear', boxShadow: '0 0 8px rgba(59,232,197,0.5)' }} />
+        </div>
+      </div>
+    </div>);
+
+};
+
+// ══════════════════════════════════════════════════════
+// RESULT SCREEN
+// ══════════════════════════════════════════════════════
+const ResultSection = ({ title, body, c1, defaultOpen = false, idx }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <button onClick={() => setOpen((o) => !o)} style={{
+        width: '100%', padding: '15px 0',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textAlign: 'left'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: 20, height: 20, borderRadius: '50%', background: `${c1}18`, border: `1px solid ${c1}35`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: c1, fontWeight: 600, flexShrink: 0 }}>
+            {idx}
+          </div>
+          <span style={{ fontSize: '13px', fontWeight: 500, lineHeight: 1.3 }}>{title}</span>
+        </div>
+        <span style={{ color: c1, fontSize: '14px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', marginLeft: '8px', flexShrink: 0 }}>›</span>
+      </button>
+      {open &&
+      <div style={{ paddingBottom: '16px', animation: 'fadeUp 0.25s ease both' }}>
+          {body.split('\n').map((line, i) =>
+        line ? <p key={i} style={{ fontSize: '12.5px', lineHeight: 1.65, color: 'rgba(255,255,255,0.6)', marginBottom: i < body.split('\n').length - 2 ? '8px' : 0 }}>{line}</p> :
+        <br key={i} />
+        )}
+        </div>
+      }
+    </div>);
+
+};
+
+const ResultScreen = ({ archetype, onRestart, muted }) => {
+  const d = ARCHETYPES[archetype];
+  const [vis, setVis] = useState(false);
+  const [rip, setRip] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [chartView, setChartView] = useState('rose'); // rose | bar
+
+  useEffect(() => {setTimeout(() => setVis(true), 120);}, []);
+
+  const copy = () => {
+    const txt = `Я — ${d.name} (${d.sub})\n\nСуперсила: ${d.power}\n${d.powerDesc}`;
+    navigator.clipboard?.writeText(txt).catch(() => {});
+    setCopied(true);setTimeout(() => setCopied(false), 2000);
+  };
+
+  const sectionTitles = [
+  'Чем мне не стоит заниматься',
+  'Каких напарников искать',
+  'Какие проекты подходят',
+  'С какими частями бизнеса работать',
+  'Как презентовать себя работодателю',
+  'Грейд и место среди коллег',
+  'Перспективы и траектории роста',
+  'Сколько я стою по рынку'];
+
+
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      background: 'radial-gradient(ellipse 80% 55% at 50% 28%, #150820 0%, #07070f 70%)',
+      overflowY: 'auto', opacity: vis ? 1 : 0, transition: 'opacity 0.7s ease'
+    }}>
+      <div style={{ padding: '48px 22px 52px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+        {/* Hero */}
+        <div style={{ position: 'relative', marginBottom: '4px' }}
+        onClick={() => setRip((r) => r + 1)} onTouchStart={() => setRip((r) => r + 1)}>
+          <Particle size={224} pal={d.pal} morph={1} ripSig={rip} />
+          <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)',
+            padding: '5px 13px', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)',
+            borderRadius: '100px', border: '1px solid rgba(255,255,255,0.12)',
+            fontSize: '10px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.09em', whiteSpace: 'nowrap' }}>
+            {d.sub}
+          </div>
+        </div>
+
+        <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.035em', color: '#fff', textAlign: 'center', marginBottom: '8px' }}>{d.name}</h1>
+        <p style={{ fontSize: '13px', lineHeight: 1.65, color: 'rgba(255,255,255,0.48)', textAlign: 'center', marginBottom: '24px', maxWidth: '290px' }}>{d.desc}</p>
+
+        {/* Superpower card */}
+        <div style={{ width: '100%', padding: '18px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${d.c1}28`, borderRadius: '18px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: `linear-gradient(135deg,${d.c1},${d.c2})`, boxShadow: `0 0 7px ${d.c1}` }} />
+            <span style={{ fontSize: '10px', color: d.c1, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Суперсила</span>
+          </div>
+          <p style={{ fontSize: '17px', fontWeight: 600, color: '#fff', marginBottom: '5px' }}>{d.power}</p>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.55 }}>{d.powerDesc}</p>
+        </div>
+
+        {/* Skill chart */}
+        <div style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '18px', marginBottom: '12px', padding: '18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.32)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Профиль навыков</p>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {['rose', 'bar'].map((v) =>
+              <button key={v} onClick={() => setChartView(v)} style={{
+                padding: '4px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: 500, cursor: 'pointer', border: 'none',
+                background: chartView === v ? d.c1 : 'rgba(255,255,255,0.07)',
+                color: chartView === v ? '#fff' : 'rgba(255,255,255,0.4)', transition: 'all 0.2s'
+              }}>{v === 'rose' ? 'Роза' : 'Шкала'}</button>
+              )}
+            </div>
+          </div>
+
+          {chartView === 'rose' ?
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <RoseChart skills={d.skills} c1={d.c1} c2={d.c2} />
+            </div> :
+
+          <div>
+              {d.skills.map((s, i) => {
+              const [w, setW] = useState(0);
+              useEffect(() => {const t = setTimeout(() => setW(s.v), i * 120);return () => clearTimeout(t);}, []);
+              return (
+                <div key={i} style={{ marginBottom: i < d.skills.length - 1 ? '11px' : 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>{s.n}</span>
+                      <span style={{ fontSize: '11px', color: d.c1, fontWeight: 500 }}>{s.v}</span>
+                    </div>
+                    <div style={{ height: '2.5px', background: 'rgba(255,255,255,0.07)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${w}%`, background: `linear-gradient(90deg,${d.c1},${d.c2})`, borderRadius: '2px', transition: `width 1s ${i * 120}ms cubic-bezier(0.25,1,0.5,1)`, boxShadow: `0 0 6px ${d.c1}55` }} />
+                    </div>
+                  </div>);
+
+            })}
+            </div>
+          }
+        </div>
+
+        {/* 8 result sections */}
+        <div style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '18px', padding: '4px 18px', marginBottom: '12px' }}>
+          {d.sections.map((s, i) =>
+          <ResultSection key={i} idx={i + 1} title={s.title} body={s.body} c1={d.c1} defaultOpen={i < 2} />
+          )}
+        </div>
+
+        {/* Paid teaser */}
+        <div style={{ width: '100%', borderRadius: '18px', overflow: 'hidden', marginBottom: '24px', position: 'relative' }}>
+          <div style={{
+            padding: '20px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            filter: 'blur(3px)',
+            pointerEvents: 'none'
+          }}>
+            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '12px' }}>Специалисты со схожим профилем</p>
+            {['Кристина А. · Архитектор роста · Яндекс', 'Михаил Т. · Архитектор роста · Авито', 'Анна В. · Архитектор роста · Сбер'].map((n, i) =>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${d.c1}22`, border: `1px solid ${d.c1}33` }} />
+                <div>
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{n}</p>
+                  <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>Инверсионный профиль: {i === 0 ? 'Коннектор' : i === 1 ? 'Эмпатичный лидер' : 'Визионер'}</p>
+                </div>
+              </div>
+            )}
+          </div>
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(7,7,15,0.6)', backdropFilter: 'blur(2px)',
+            gap: '10px'
+          }}>
+            <div style={{ fontSize: '20px', opacity: 0.7 }}>🔒</div>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: '#fff', textAlign: 'center' }}>Найди своих<br />напарников</p>
+            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', maxWidth: '200px', lineHeight: 1.5 }}>Анкеты специалистов со схожим типом и идеальных партнёров</p>
+            <button style={{
+              padding: '10px 20px', background: `linear-gradient(135deg,${d.c1},${d.c2})`,
+              border: 'none', borderRadius: '12px', color: '#fff', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+              boxShadow: `0 4px 16px ${d.c1}40`
+            }}>Открыть доступ</button>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '9px' }}>
+          <button onClick={copy} style={{
+            width: '100%', height: '50px',
+            background: copied ? 'rgba(59,232,197,0.15)' : `linear-gradient(135deg,${d.c1},${d.c2})`,
+            border: copied ? '1px solid rgba(59,232,197,0.4)' : 'none',
+            borderRadius: '14px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+            boxShadow: copied ? 'none' : `0 6px 22px ${d.c1}38`, transition: 'all 0.3s ease'
+          }}>{copied ? '✓ Профиль скопирован' : 'Скопировать профиль'}</button>
+          <button onClick={() => {SFX.trans(muted);onRestart();}} style={{
+            width: '100%', height: '50px',
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)',
+            borderRadius: '14px', color: 'rgba(255,255,255,0.6)', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+          }}>Пройти заново</button>
+        </div>
+
+      </div>
+    </div>);
+
+};
+
+// ══════════════════════════════════════════════════════
+// APP
+// ══════════════════════════════════════════════════════
+const calcResult = (answers) => {
+  const c = {};answers.forEach((k) => {c[k] = (c[k] || 0) + 1;});
+  return Object.entries(c).sort((a, b) => b[1] - a[1])[0][0];
+};
+
+const App = () => {
+  const [screen, setScreen] = useState('intro');
+  const [qIdx, setQIdx] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [blockPhase, setBlockPhase] = useState(1);
+  const [muted, setMuted] = useState(false);
+
+  useEffect(() => {
+    try {const s = localStorage.getItem('cmq2');if (s) {const { screen: sc, qIdx: q, answers: a, blockPhase: bp } = JSON.parse(s);if (sc && q !== undefined && a) {setScreen(sc);setQIdx(q);setAnswers(a);if (bp) setBlockPhase(bp);}}} catch (e) {}
+  }, []);
+  useEffect(() => {
+    try {localStorage.setItem('cmq2', JSON.stringify({ screen, qIdx, answers, blockPhase }));} catch (e) {}
+  }, [screen, qIdx, answers, blockPhase]);
+
+  const handleStart = () => {setQIdx(0);setAnswers([]);setScreen('quiz');};
+
+  const handleAnswer = (keys) => {
+    const next = [...answers, ...keys];
+    setAnswers(next);
+    const answeredIdx = qIdx;
+    if (answeredIdx === 2) {setQIdx(3);setBlockPhase(1);setScreen('blockReward');} else
+    if (answeredIdx === 5) {setQIdx(6);setBlockPhase(2);setScreen('blockReward');} else
+    if (answeredIdx === 8) {setScreen('loading');} else
+    {setQIdx(qIdx + 1);}
+  };
+
+  const archetype = answers.length >= QS.length ? calcResult(answers) : 'A';
+
+  return (
+    <div className="phone">
+      {screen === 'intro' && <IntroScreen onStart={handleStart} muted={muted} setMuted={setMuted} />}
+      {screen === 'quiz' && <QuizScreen qIdx={qIdx} answers={answers} onAnswer={handleAnswer} muted={muted} />}
+      {screen === 'blockReward' && <BlockReward phase={blockPhase} answers={answers} onContinue={() => setScreen('quiz')} muted={muted} />}
+      {screen === 'loading' && <LoadingScreen onDone={() => setScreen('result')} muted={muted} />}
+      {screen === 'result' && <ResultScreen archetype={archetype} onRestart={() => {setScreen('intro');setQIdx(0);setAnswers([]);}} muted={muted} />}
+    </div>);
+
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
