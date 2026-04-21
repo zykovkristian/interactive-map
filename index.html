@@ -89,7 +89,7 @@ const PALETTES = {
 const INTRO = [
 { id: 'concept',
   tag: 'Твой цифровой слепок',
-  head: 'Гравитон — это частица притяжения масс',
+  head: 'Гравитон — это частица \nпритяжения масс',
   body: 'Сообщество — это живая сеть связей между людьми. Каждый человек влияет на её форму по-своему. Но комьюнити-менеджер — особенно.',
   pal: 'neutral', sz: 196 },
 { id: 'types',
@@ -103,7 +103,7 @@ const INTRO = [
 },
 { id: 'start',
   tag: 'Готово к старту',
-  head: 'Твоя частица\nуже ждёт.',
+  head: 'Изучим\nтвои частицы?',
   body: '9 вопросов — 3 блока — профиль, который останется с тобой.',
   pal: 'neutral', sz: 210, isCTA: true }];
 
@@ -510,7 +510,7 @@ const IntroScreen = ({ onStart, muted, setMuted }) => {
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF6B9A', boxShadow: '0 0 6px #FF6B9A' }} />
               <span style={{ fontSize: '10px', letterSpacing: '0.14em', color: 'rgba(255,107,154,0.75)', textTransform: 'uppercase' }}>Какой ты специалист?</span>
             </div>
-            <h1 style={{ fontSize: '30px', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.04em', color: '#fff', whiteSpace: 'pre-line' }}>{'Это твоя частица'}</h1>
+            <h1 style={{ fontSize: '30px', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.04em', color: '#fff', whiteSpace: 'pre-line' }}>{'Гравитон — это частица \nпритяжения масс'}</h1>
           </div>
 
           <div onClick={() => {}}>
@@ -519,7 +519,7 @@ const IntroScreen = ({ onStart, muted, setMuted }) => {
 
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', marginBottom: '16px' }}>
-              Как художник использует кисти и краски — ты используешь сообщество, чтобы выразить себя. 9 вопросов покажут твой профессиональный портрет как луч света.
+              Сообщество — это живая сеть связей между людьми. Каждый человек влияет на её форму по-своему. Но комьюнити-менеджер — особенно.
             </p>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>
               <span>Листай вниз</span>
@@ -574,7 +574,7 @@ const IntroScreen = ({ onStart, muted, setMuted }) => {
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#3BE8C5', boxShadow: '0 0 6px #3BE8C5' }} />
               <span style={{ fontSize: '10px', letterSpacing: '0.14em', color: 'rgba(59,232,197,0.75)', textTransform: 'uppercase' }}>Готово к старту</span>
             </div>
-            <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.04em', color: '#fff', lineHeight: 1.15, whiteSpace: 'pre-line' }}>{'Твоя частица\nуже ждёт.'}</h2>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.04em', color: '#fff', lineHeight: 1.15, whiteSpace: 'pre-line' }}>{'Приступим к знакомств?\nуже ждёт.'}</h2>
           </div>
           <Particle size={224} pal="neutral" morph={0} />
           <div style={{ textAlign: 'center', width: '100%' }}>
