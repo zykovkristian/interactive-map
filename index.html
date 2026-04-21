@@ -90,11 +90,11 @@ const INTRO = [
 { id: 'concept',
   tag: 'Твой цифровой слепок',
   head: 'Гравитон — это частица \nпритяжения масс',
-  body: 'Сообщество — это живая сеть связей между людьми. Каждый человек влияет на её форму по-своему. Но комьюнити-менеджер — особенно.',
+  body: 'Сообщество — это живая сеть связей между людьми. \nКаждый участник влияет на её форму по-своему.\n Но комьюнити-менеджер — особенно.',
   pal: 'neutral', sz: 196 },
 { id: 'types',
   tag: 'Четыре природы',
-  head: 'Кем ты\nможешь быть?',
+  head: 'Каким\nкомьюнити-менеджером\nты можешь быть?',
   types: [
   { k: 'A', name: 'Архитектор роста', c: '#FF8A3D', line: 'Строит системы, которые живут без него' },
   { k: 'E', name: 'Эмпатичный лидер', c: '#FF6B9A', line: 'Слышит то, что не сказано вслух' },
@@ -574,12 +574,12 @@ const IntroScreen = ({ onStart, muted, setMuted }) => {
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#3BE8C5', boxShadow: '0 0 6px #3BE8C5' }} />
               <span style={{ fontSize: '10px', letterSpacing: '0.14em', color: 'rgba(59,232,197,0.75)', textTransform: 'uppercase' }}>Готово к старту</span>
             </div>
-            <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.04em', color: '#fff', lineHeight: 1.15, whiteSpace: 'pre-line' }}>{'Приступим к знакомств?\nуже ждёт.'}</h2>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.04em', color: '#fff', lineHeight: 1.15, whiteSpace: 'pre-line' }}>{'Готов узнать\n о своей частице?'}</h2>
           </div>
           <Particle size={224} pal="neutral" morph={0} />
           <div style={{ textAlign: 'center', width: '100%' }}>
             <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px', lineHeight: 1.65 }}>
-              9 вопросов — 3 блока — профиль,<br />который останется с тобой навсегда.
+              9 вопросов — 3 блока — профиль,<br />Знания, которые останутся навсегда.
             </p>
             <button onClick={() => {SFX.trans(muted);onStart();}} style={{
               width: '100%', height: '54px',
